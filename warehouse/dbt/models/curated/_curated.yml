@@ -1,0 +1,13 @@
+version: 2
+models:
+  - name: curated_telemetry
+    description: "Unified, deduplicated, contract-validated telemetry (stream + history)"
+    columns:
+      - name: vehicle_id
+        data_tests: [not_null]
+      - name: ts
+        data_tests: [not_null]
+      - name: source
+        data_tests:
+          - accepted_values:
+              values: ['stream', 'history']

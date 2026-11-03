@@ -1,0 +1,9 @@
+version: 2
+sources:
+  - name: raw
+    schema: raw
+    tables:
+      - name: telemetry_events
+        description: "Streaming events from JetStream, keyed by stream_seq"
+      - name: telemetry_history
+        description: "Historical batch backfill, keyed by (batch_id, row_num)"

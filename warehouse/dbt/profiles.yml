@@ -1,0 +1,12 @@
+fleet_telemetry:
+  target: dev
+  outputs:
+    dev:
+      type: postgres
+      host: localhost
+      port: 5433
+      user: postgres
+      password: "{{ env_var('DBT_PG_PASSWORD', 'dev') }}"
+      dbname: warehouse
+      schema: public
+      threads: 4

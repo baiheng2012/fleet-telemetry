@@ -3,3 +3,8 @@ bin/
 .env
 __pycache__/
 .venv/
+warehouse/dbt/target/
+warehouse/dbt/dbt_packages/
+warehouse/dbt/logs/
+*.egg-info/
+.pytest_cache/

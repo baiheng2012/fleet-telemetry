@@ -1,0 +1,21 @@
+name: fleet_telemetry
+version: "1.0.0"
+config-version: 2
+profile: fleet_telemetry
+
+model-paths: ["models"]
+macro-paths: ["macros"]
+test-paths: ["tests"]
+clean-targets: ["target"]
+
+models:
+  fleet_telemetry:
+    staging:
+      +schema: staging
+      +materialized: view
+    curated:
+      +schema: curated
+      +materialized: table
+    semantic:
+      +schema: semantic
+      +materialized: table

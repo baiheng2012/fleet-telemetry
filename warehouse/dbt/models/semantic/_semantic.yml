@@ -1,0 +1,18 @@
+version: 2
+models:
+  - name: dim_vehicle
+    columns:
+      - name: vehicle_id
+        data_tests: [unique, not_null]
+  - name: fct_vehicle_hourly
+    columns:
+      - name: vehicle_id
+        data_tests: [not_null]
+      - name: hour_start_utc
+        data_tests: [not_null]
+  - name: fct_vehicle_daily
+    columns:
+      - name: vehicle_id
+        data_tests: [not_null]
+      - name: day
+        data_tests: [not_null]
