@@ -1,0 +1,28 @@
+version: 1
+signals:
+  engine_rpm:
+    unit: rpm
+    type: float
+    range: [0, 3000]
+    applies_to: [LHD, Truck, Bolter]
+  coolant_temp:
+    unit: celsius
+    type: float
+    range: [-20, 130]
+    applies_to: [LHD, Truck, Bolter]
+  hydraulic_pressure:
+    unit: bar
+    type: float
+    range: [0, 350]
+    applies_to: [LHD, Truck, Bolter]
+  fuel_level:
+    unit: percent
+    type: float
+    range: [0, 100]
+    applies_to: [LHD, Truck, Bolter]
+  hour_meter:
+    unit: hour
+    type: float
+    range: [0, 100000]
+    applies_to: [LHD, Truck, Bolter]
+fault_codes: [E101, E205, E310, E412]
