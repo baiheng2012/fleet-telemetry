@@ -2,7 +2,6 @@ package main
 
 import (
 	"context"
-	"encoding/json"
 	"flag"
 	"fmt"
 	"log"
@@ -12,6 +11,7 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/baiheng2012/fleet-telemetry/internal/bus"
 	"github.com/baiheng2012/fleet-telemetry/internal/contract"
 	"github.com/baiheng2012/fleet-telemetry/internal/vehicle"
 )
@@ -24,6 +24,7 @@ func main() {
 	seed := flag.Int64("seed", 42, "base seed")
 	contractPath := flag.String("contract", "contracts/vehicle_semantics.yaml", "contract file")
 	chaosOn := flag.Bool("chaos", true, "inject dirty data")
+	natsURL := flag.String("nats", "", "NATS url; empty = print to stdout")
 	flag.Parse()
 
 	c, err := contract.Load(*contractPath)
@@ -34,17 +35,28 @@ func main() {
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer stop()
 
+	var pub bus.Publisher
+	if *natsURL == "" {
+		pub = bus.NewStdout()
+	} else {
+		pub, err = bus.NewNATS(ctx, *natsURL)
+		if err != nil {
+			log.Fatal(err)
+		}
+	}
+	defer pub.Close()
+
 	out := make(chan vehicle.Reading, 1024)
 
-	// 唯一的写入协程（下周换成 NATS publisher）
 	var writerDone sync.WaitGroup
 	writerDone.Add(1)
 	go func() {
 		defer writerDone.Done()
-		enc := json.NewEncoder(os.Stdout)
+		// 注意：这里不能用已取消的 ctx 发布，否则退出时 channel 里的残余消息发不出去
+		pubCtx := context.Background()
 		for r := range out {
-			if err := enc.Encode(r); err != nil {
-				log.Println("encode:", err)
+			if err := pub.Publish(pubCtx, r); err != nil {
+				log.Println("publish:", err)
 			}
 		}
 	}()
