@@ -14,7 +14,21 @@ services:
     volumes:
       - pg-data:/var/lib/postgresql/data
       - ./warehouse/init:/docker-entrypoint-initdb.d:ro
+  
+  legacy-pg:
+    image: postgres:16
+    command: ["postgres", "-c", "wal_level=logical", "-c", "max_replication_slots=4", "-c", "max_wal_senders=4"]
+    environment:
+      POSTGRES_PASSWORD: dev
+      POSTGRES_DB: legacy
+    ports: ["5434:5432"]
+    volumes:
+      - legacy-data:/var/lib/postgresql/data
+      - ./legacy/init:/docker-entrypoint-initdb.d:ro
+
+
 
 volumes:
   nats-data:
   pg-data:
+  legacy-data:

@@ -8,9 +8,26 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 )
 
-type Postgres struct{ pool *pgxpool.Pool }
+var allowedTables = map[string]bool{
+	"raw.telemetry_events":  true,
+	"raw.legacy_cdc_events": true,
+}
 
-func NewPostgres(ctx context.Context, dsn string) (*Postgres, error) {
+const insertTmpl = `
+INSERT INTO %s (stream_seq, subject, published_at, payload)
+SELECT s, subj, t, p::jsonb
+FROM unnest($1::bigint[], $2::text[], $3::timestamptz[], $4::text[]) AS u(s, subj, t, p)
+ON CONFLICT (stream_seq) DO NOTHING`
+
+type Postgres struct {
+	pool   *pgxpool.Pool
+	insert string
+}
+
+func NewPostgres(ctx context.Context, dsn, table string) (*Postgres, error) {
+	if !allowedTables[table] {
+		return nil, fmt.Errorf("table %q not allowed", table)
+	}
 	pool, err := pgxpool.New(ctx, dsn)
 	if err != nil {
 		return nil, fmt.Errorf("pg pool: %w", err)
@@ -19,14 +36,8 @@ func NewPostgres(ctx context.Context, dsn string) (*Postgres, error) {
 		pool.Close()
 		return nil, fmt.Errorf("pg ping: %w", err)
 	}
-	return &Postgres{pool: pool}, nil
+	return &Postgres{pool: pool, insert: fmt.Sprintf(insertTmpl, table)}, nil
 }
-
-const insertSQL = `
-INSERT INTO raw.telemetry_events (stream_seq, subject, published_at, payload)
-SELECT s, subj, t, p::jsonb
-FROM unnest($1::bigint[], $2::text[], $3::timestamptz[], $4::text[]) AS u(s, subj, t, p)
-ON CONFLICT (stream_seq) DO NOTHING`
 
 func (p *Postgres) WriteBatch(ctx context.Context, events []Event) (int64, error) {
 	if len(events) == 0 {
@@ -39,7 +50,7 @@ func (p *Postgres) WriteBatch(ctx context.Context, events []Event) (int64, error
 	for i, e := range events {
 		seqs[i], subjects[i], times[i], payloads[i] = e.StreamSeq, e.Subject, e.PublishedAt, string(e.Payload)
 	}
-	tag, err := p.pool.Exec(ctx, insertSQL, seqs, subjects, times, payloads)
+	tag, err := p.pool.Exec(ctx, p.insert, seqs, subjects, times, payloads)
 	if err != nil {
 		return 0, fmt.Errorf("insert batch: %w", err)
 	}

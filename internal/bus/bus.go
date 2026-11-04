@@ -44,3 +44,19 @@ func EnsureStream(ctx context.Context, js jetstream.JetStream) (jetstream.Stream
 		MaxAge:    24 * time.Hour,
 	})
 }
+const (
+	CDCStreamName    = "LEGACY_CDC"
+	CDCSubjectFilter = "cdc.>"
+)
+
+// EnsureCDCStream：CDC 专用流。Duplicates 窗口配合 Nats-Msg-Id 做发布端去重。
+func EnsureCDCStream(ctx context.Context, js jetstream.JetStream) (jetstream.Stream, error) {
+	return js.CreateOrUpdateStream(ctx, jetstream.StreamConfig{
+		Name:       CDCStreamName,
+		Subjects:   []string{CDCSubjectFilter},
+		Storage:    jetstream.FileStorage,
+		Retention:  jetstream.LimitsPolicy,
+		MaxAge:     72 * time.Hour,
+		Duplicates: 10 * time.Minute,
+	})
+}

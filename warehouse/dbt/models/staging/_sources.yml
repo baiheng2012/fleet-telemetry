@@ -15,3 +15,5 @@ sources:
         freshness:
           warn_after: {count: 2, period: day}
           error_after: {count: 14, period: day}
+      - name: legacy_cdc_events
+        description: "Row-level change events from the legacy Postgres (CDC -> JetStream -> ingestor)"

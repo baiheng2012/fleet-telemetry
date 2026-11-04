@@ -1,0 +1,9 @@
+version: 2
+models:
+  - name: legacy_telemetry
+    description: "Current state of legacy.telemetry_log rebuilt from CDC events"
+    columns:
+      - name: legacy_id
+        data_tests: [unique, not_null]
+      - name: vehicle_id
+        data_tests: [not_null]   # 设备码都能映射到新平台的 vehicle_id

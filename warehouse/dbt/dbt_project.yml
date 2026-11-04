@@ -19,3 +19,6 @@ models:
     semantic:
       +schema: semantic
       +materialized: table
+seeds:
+  fleet_telemetry:
+    +schema: staging

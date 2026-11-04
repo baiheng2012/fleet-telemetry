@@ -20,6 +20,7 @@ func main() {
 	natsURL := flag.String("nats", "nats://localhost:4222", "NATS url")
 	dsn := flag.String("pg", "postgres://postgres:dev@localhost:5433/warehouse", "warehouse DSN")
 	batchSize := flag.Int("batch", 500, "max messages per batch")
+	source := flag.String("source", "stream", "stream (vehicle telemetry) | cdc (legacy changes)")
 	flag.Parse()
 
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
@@ -31,13 +32,27 @@ func main() {
 	}
 	defer nc.Drain()
 
-	stream, err := bus.EnsureStream(ctx, js)
+	var (
+		stream                 jetstream.Stream
+		durable, filter, table string
+	)
+	switch *source {
+	case "stream":
+		stream, err = bus.EnsureStream(ctx, js)
+		durable, filter, table = "raw-ingestor", bus.SubjectFilter, "raw.telemetry_events"
+	case "cdc":
+		stream, err = bus.EnsureCDCStream(ctx, js)
+		durable, filter, table = "cdc-ingestor", bus.CDCSubjectFilter, "raw.legacy_cdc_events"
+	default:
+		log.Fatalf("unknown -source %q", *source)
+	}
 	if err != nil {
 		log.Fatal(err)
 	}
+
 	cons, err := stream.CreateOrUpdateConsumer(ctx, jetstream.ConsumerConfig{
-		Durable:       "raw-ingestor",
-		FilterSubject: bus.SubjectFilter,
+		Durable:       durable,
+		FilterSubject: filter,
 		AckPolicy:     jetstream.AckExplicitPolicy,
 		AckWait:       30 * time.Second,
 		MaxDeliver:    10,
@@ -46,14 +61,13 @@ func main() {
 		log.Fatal(err)
 	}
 
-	var snk sink.Sink
-	snk, err = sink.NewPostgres(ctx, *dsn)
+	snk, err := sink.NewPostgres(ctx, *dsn, table)
 	if err != nil {
 		log.Fatal(err)
 	}
 	defer snk.Close()
 
-	log.Println("ingestor started")
+	log.Printf("ingestor started: source=%s table=%s", *source, table)
 	for ctx.Err() == nil {
 		batch, err := cons.Fetch(*batchSize, jetstream.FetchMaxWait(time.Second))
 		if err != nil {
@@ -67,7 +81,7 @@ func main() {
 		for m := range batch.Messages() {
 			if !json.Valid(m.Data()) {
 				log.Printf("invalid json on %s, terminating message", m.Subject())
-				_ = m.Term() // 毒丸消息：不再重投（后续可送死信）
+				_ = m.Term()
 				continue
 			}
 			md, err := m.Metadata()
@@ -88,7 +102,6 @@ func main() {
 			continue
 		}
 
-		// 先写库，成功后才 Ack
 		inserted, err := snk.WriteBatch(ctx, events)
 		if err != nil {
 			log.Println("write failed, will redeliver:", err)
