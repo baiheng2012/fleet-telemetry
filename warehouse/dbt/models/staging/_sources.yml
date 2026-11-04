@@ -5,5 +5,13 @@ sources:
     tables:
       - name: telemetry_events
         description: "Streaming events from JetStream, keyed by stream_seq"
+        loaded_at_field: ingested_at
+        freshness:
+          warn_after: {count: 5, period: minute}
+          error_after: {count: 30, period: minute}
       - name: telemetry_history
         description: "Historical batch backfill, keyed by (batch_id, row_num)"
+        loaded_at_field: loaded_at
+        freshness:
+          warn_after: {count: 2, period: day}
+          error_after: {count: 14, period: day}
