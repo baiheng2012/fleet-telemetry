@@ -22,3 +22,5 @@ models:
 seeds:
   fleet_telemetry:
     +schema: staging
+on-run-end:
+  - "{{ create_active_alerts_view() }}"
