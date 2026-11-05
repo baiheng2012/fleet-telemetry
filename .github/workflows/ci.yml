@@ -1,0 +1,40 @@
+name: ci
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  go:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+      - run: go vet ./...
+      - run: go test -race ./...
+
+  python:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - run: pip install -e "python[dev]"
+      - name: generated files match the contract
+        run: python -m fleet_tools.contract_codegen --check
+      - run: pytest python/tests -q
+      - name: dbt parse (no database needed)
+        working-directory: warehouse/dbt
+        env:
+          DBT_PROFILES_DIR: .
+        run: dbt parse
+      - name: contract diff vs base branch
+        if: github.event_name == 'pull_request'
+        run: |
+          git show origin/${{ github.base_ref }}:contracts/vehicle_semantics.yaml > /tmp/old.yaml
+          python -m fleet_tools.contract_diff /tmp/old.yaml contracts/vehicle_semantics.yaml
