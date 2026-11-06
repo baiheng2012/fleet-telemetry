@@ -21,6 +21,9 @@ func main() {
 	dsn := flag.String("pg", "postgres://postgres:dev@localhost:5433/warehouse", "warehouse DSN")
 	batchSize := flag.Int("batch", 500, "max messages per batch")
 	source := flag.String("source", "stream", "stream (vehicle telemetry) | cdc (legacy changes)")
+	sinkKind := flag.String("sink", "postgres", "warehouse sink: postgres | snowflake")
+	sfDSN := flag.String("sf-dsn", os.Getenv("SNOWFLAKE_DSN"), "Snowflake DSN (prefer env var; don't pass secrets on the command line)")
+
 	flag.Parse()
 
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
@@ -61,7 +64,16 @@ func main() {
 		log.Fatal(err)
 	}
 
-	snk, err := sink.NewPostgres(ctx, *dsn, table)
+	
+	target := *dsn
+	if *sinkKind == "snowflake" {
+		target = *sfDSN
+	}
+	snk, err := sink.New(ctx, *sinkKind, target, table)
+
+
+
+
 	if err != nil {
 		log.Fatal(err)
 	}
