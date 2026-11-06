@@ -25,6 +25,7 @@ func main() {
 	contractPath := flag.String("contract", "contracts/vehicle_semantics.yaml", "contract file")
 	chaosOn := flag.Bool("chaos", true, "inject dirty data")
 	natsURL := flag.String("nats", "", "NATS url; empty = print to stdout")
+	mqttURL := flag.String("mqtt", "", "MQTT broker url; publish Sparkplug B DDATA (takes precedence over -nats)")
 	flag.Parse()
 
 	c, err := contract.Load(*contractPath)
@@ -36,15 +37,23 @@ func main() {
 	defer stop()
 
 	var pub bus.Publisher
-	if *natsURL == "" {
-		pub = bus.NewStdout()
-	} else {
+	switch {
+	case *mqttURL != "":
+		pub, err = bus.NewMQTT(*mqttURL, "fleet", "mine1")
+	case *natsURL != "":
 		pub, err = bus.NewNATS(ctx, *natsURL)
-		if err != nil {
-			log.Fatal(err)
-		}
+	default:
+		pub = bus.NewStdout()
+	}
+	if err != nil {
+		log.Fatal(err)
 	}
 	defer pub.Close()
+
+
+
+
+
 
 	out := make(chan vehicle.Reading, 1024)
 

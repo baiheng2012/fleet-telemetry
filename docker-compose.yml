@@ -36,6 +36,15 @@ services:
       - ./grafana/dashboards:/var/lib/grafana/dashboards:ro
     depends_on: [warehouse-pg]
 
+  mosquitto:
+    image: eclipse-mosquitto:2
+    ports: ["1883:1883"]
+    volumes:
+      - ./deploy/mosquitto/mosquitto.conf:/mosquitto/config/mosquitto.conf:ro
+
+
+
+
 volumes:
   nats-data:
   pg-data:
