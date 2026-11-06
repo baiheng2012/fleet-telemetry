@@ -6,7 +6,7 @@ End-to-end telemetry data platform for a simulated underground-mining fleet.
 Go ingestion/CDC/gateway services, a contract-driven warehouse model (dbt), data-quality and SLA monitoring,
 Grafana dashboards-as-code and anomaly detection. Go + SQL + Python.
 
-![dashboard](docs/img/dashboard.png)
+![dashboard](docs/img/dashboard.jpeg)
 
 ## Architecture
 
